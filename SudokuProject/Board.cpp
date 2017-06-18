@@ -5,7 +5,7 @@ Board::Board() {
 	divLine = "|-----|-----|-----|";
 	boxLine = "|=====+=====+=====|";
 	for (int i = 0; i < 9; i++) {
-		lines.push_back("|X|X|X|X|X|X|X|X|X|");
+		lines.push_back("| | | | | | | | | |");
 	}
 }
 
@@ -22,7 +22,7 @@ Board::Board(Puzzle* p) {
 				line.append(std::to_string(tiles[i][j]->getVal()) + "|");
 			}
 			else {
-				line.append("X|");
+				line.append(" |");
 			}
 		}
 		lines.emplace(lines.begin() + i, line);
@@ -80,7 +80,7 @@ void Board::updateLines() {
 				line.append(std::to_string(tiles[i][j]->getVal()) + "|");
 			}
 			else {
-				line.append("X|");
+				line.append(" |");
 			}
 		}
 		newLines.emplace(newLines.begin() + i, line);

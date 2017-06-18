@@ -5,22 +5,45 @@
 
 Solver::Solver(Puzzle* p) {
 	tiles = p->getTiles();
+	rowPotential.resize(9);
+	colPotential.resize(9);
+	for (int k = 0; k < 9; k++) {
+		rowPotential[k].resize(9);
+		colPotential[k].resize(9);
+		for (int h = 0; h < 9; h++) {
+			rowPotential[k][h] = 9;
+			colPotential[k][h] = 9;
+		}
+	}
 	//initial updating
 	for (int i = 0; i < 9; i++) {
 		for (int j = 0; j < 9; j++) {
 			if (tiles[i][j]->hasVal()) {
-				updateCol(j, tiles[i][j]->getVal());
-				updateRow(i, tiles[i][j]->getVal());
-				updateSquare(tiles[i][j]->getSquare(), tiles[i][j]->getVal());
+				int val = tiles[i][j]->getVal();
+				rowPotential[i][val-1] = 0;
+				updateRowPotential(i);
+				colPotential[j][val-1] = 0;
+				updateColPotential(j);
+				updateCol(j, val);
+				updateRow(i, val);
+				updateSquare(tiles[i][j]->getSquare(), val);
 				tiles[i][j]->setQueueState(true);
 			}
 		}
 	}
+	checkBoard();
+	//std::cout << "Tiles to set after initial updates called: " << setQueue.size() << std::endl;
+}
+
+void Solver::checkBoard() {
 	for (int i = 1; i < 10; i++) {
 		checkSquare(i);
+		checkRowPotential(i - 1);
+		checkColPotential(i - 1);
 	}
-	std::cout << "Tiles to set after initial updates called: " << setQueue.size() << std::endl;
-	solve();
+	if (!setQueue.empty()) {
+		solve();
+	}
 }
 
 void Solver::solve() {
@@ -32,13 +55,21 @@ void Solver::solve() {
 		setQueue.pop();
 		count++;
 	}
+	checkBoard();
+	count = count;
 }
 
 void Solver::setTile(Tile* tile) {
 	tile->setVal(tile->findVal());
 	int v = tile->getVal();
-	updateCol(tile->getCol()-1, v);
-	updateRow(tile->getRow()-1, v);
+	int r = tile->getRow();
+	int c = tile->getCol();
+	rowPotential[r-1][v - 1] = 0;
+	colPotential[c-1][v - 1] = 0;
+	updateRowPotential(r - 1);
+	updateColPotential(c - 1);
+	updateCol(c-1, v);
+	updateRow(r-1, v);
 	updateSquare(tile->getSquare(), v);
 	checkAdjSquares(tile->getSquare());
 }
@@ -47,7 +78,10 @@ void Solver::updateRow(int row, int val, int sqr) {
 	//loop through tiles in row and update potential
 	for (int i = 0; i < 9; i++) {
 		if (!tiles[row][i]->hasVal() && !tiles[row][i]->checkPotential() && tiles[row][i]->getSquare() != sqr) {
-			tiles[row][i]->removePotential(val);
+			if (tiles[row][i]->hasPotential(val)) {
+				colPotential[i][val - 1]--;
+				tiles[row][i]->removePotential(val);
+			}
 			if (tiles[row][i]->checkPotential() && !tiles[row][i]->hasBeenQueued()) {
 				setQueue.push(tiles[row][i]);
 				tiles[row][i]->setQueueState(true);
@@ -60,7 +94,10 @@ void Solver::updateCol(int col, int val, int sqr) {
 	//loop through tiles in column and update potential
 	for (int i = 0; i < 9; i++) {
 		if (!tiles[i][col]->hasVal() && !tiles[i][col]->checkPotential() && tiles[i][col]->getSquare() != sqr) {
-			tiles[i][col]->removePotential(val);
+			if (tiles[i][col]->hasPotential(val)) {
+				rowPotential[i][val - 1]--;
+				tiles[i][col]->removePotential(val);
+			}
 			if (tiles[i][col]->checkPotential() && !tiles[i][col]->hasBeenQueued()) {
 				setQueue.push(tiles[i][col]);
 				tiles[i][col]->setQueueState(true);
@@ -77,7 +114,11 @@ void Solver::updateSquare(int sqr, int val) {
 	for (int i = r; i < r + 3; i++) {
 		for (int j = c; j < c + 3; j++) {
 			if (!tiles[i][j]->hasVal() && !tiles[i][j]->checkPotential()) {
-				tiles[i][j]->removePotential(val);
+				if (tiles[i][j]->hasPotential(val)) {
+					rowPotential[i][val - 1]--;
+					colPotential[j][val - 1]--;
+					tiles[i][j]->removePotential(val);
+				}
 				if (tiles[i][j]->checkPotential() && !tiles[i][j]->hasBeenQueued()) {
 					setQueue.push(tiles[i][j]);
 					tiles[i][j]->setQueueState(true);
@@ -195,6 +236,50 @@ void Solver::checkAdjSquares(int sqr) {
 		}
 		if (radj + i != sqr) {
 			checkSquare(radj + i);
+		}
+	}
+}
+
+void Solver::checkRowPotential(int r) {
+	for (int j = 0; j < 9; j++) {
+		if (rowPotential[r][j] == 1) {
+			for (int k = 0; k < 9; k++) {
+				if (tiles[r][k]->hasPotential(j + 1) && !tiles[r][k]->hasBeenQueued()) {
+					setQueue.push(tiles[r][k]);
+					tiles[r][k]->setQueueState(true);
+					tiles[r][k]->updatePotential(j + 1);
+				}
+			}
+		}
+	}
+}
+
+void Solver::checkColPotential(int c) {
+	for (int j = 0; j < 9; j++) {
+		if (colPotential[c][j] == 1) {
+			for (int k = 0; k < 9; k++) {
+				if (tiles[k][c]->hasPotential(j + 1) && !tiles[k][c]->hasBeenQueued()) {
+					setQueue.push(tiles[k][c]);
+					tiles[k][c]->setQueueState(true);
+					tiles[k][c]->updatePotential(j + 1);
+				}
+			}
+		}
+	}
+}
+
+void Solver::updateRowPotential(int r) {
+	for (int i = 0; i < 9; i++) {
+		if (rowPotential[r][i] > 1) {
+			rowPotential[r][i]--;
+		}
+	}
+}
+
+void Solver::updateColPotential(int c) {
+	for (int i = 0; i < 9; i++) {
+		if (colPotential[i][c] > 1) {
+			colPotential[i][c]--;
 		}
 	}
 }
