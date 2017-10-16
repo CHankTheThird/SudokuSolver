@@ -28,6 +28,7 @@ int main() {
 	Solver s(curr);
 	board.updateLines();
 	std::cout << board.printBoard();
+	std::cout << s.getDebugInfo();
 	while (puzz != "exit") {
 		std::cout << "Type exit to close program" << std::endl;
 		std::cin >> puzz;

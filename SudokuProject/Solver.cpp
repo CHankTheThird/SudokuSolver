@@ -24,9 +24,9 @@ Solver::Solver(Puzzle* p) {
 				updateRowPotential(i);
 				colPotential[j][val-1] = 0;
 				updateColPotential(j);
-				updateCol(j, val);
-				updateRow(i, val);
-				updateSquare(tiles[i][j]->getSquare(), val);
+				updateTilePotentialInCol(j, val);
+				updateTilePotentialInRow(i, val);
+				updateTilePotentialInSquare(tiles[i][j]->getSquare(), val);
 				tiles[i][j]->setQueueState(true);
 			}
 		}
@@ -36,6 +36,8 @@ Solver::Solver(Puzzle* p) {
 }
 
 void Solver::checkBoard() {
+	checkBoardCalls++;
+
 	for (int i = 1; i < 10; i++) {
 		checkSquare(i);
 		checkRowPotential(i - 1);
@@ -60,21 +62,24 @@ void Solver::solve() {
 }
 
 void Solver::setTile(Tile* tile) {
+	setTileCalls++;
+
 	tile->setVal(tile->findVal());
 	int v = tile->getVal();
 	int r = tile->getRow();
 	int c = tile->getCol();
-	rowPotential[r-1][v - 1] = 0;
-	colPotential[c-1][v - 1] = 0;
+	rowPotential[r - 1][v - 1] = 0;
+	colPotential[c - 1][v - 1] = 0;
 	updateRowPotential(r - 1);
 	updateColPotential(c - 1);
-	updateCol(c-1, v);
-	updateRow(r-1, v);
-	updateSquare(tile->getSquare(), v);
-	checkAdjSquares(tile->getSquare());
+	updateTilePotentialInCol(c - 1, v);
+	updateTilePotentialInRow(r - 1, v);
+	updateTilePotentialInSquare(tile->getSquare(), v);
 }
 
-void Solver::updateRow(int row, int val, int sqr) {
+void Solver::updateTilePotentialInRow(int row, int val, int sqr) {
+	updateTilePotentialInRowCalls++;
+
 	//loop through tiles in row and update potential
 	for (int i = 0; i < 9; i++) {
 		if (!tiles[row][i]->hasVal() && !tiles[row][i]->checkPotential() && tiles[row][i]->getSquare() != sqr) {
@@ -90,7 +95,9 @@ void Solver::updateRow(int row, int val, int sqr) {
 	}
 }
 
-void Solver::updateCol(int col, int val, int sqr) {
+void Solver::updateTilePotentialInCol(int col, int val, int sqr) {
+	updateTilePotentialInColCalls++;
+
 	//loop through tiles in column and update potential
 	for (int i = 0; i < 9; i++) {
 		if (!tiles[i][col]->hasVal() && !tiles[i][col]->checkPotential() && tiles[i][col]->getSquare() != sqr) {
@@ -106,7 +113,9 @@ void Solver::updateCol(int col, int val, int sqr) {
 	}
 }
 
-void Solver::updateSquare(int sqr, int val) {
+void Solver::updateTilePotentialInSquare(int sqr, int val) {
+	updateTilePotentialInSqrCalls++;
+
 	//determine the starting row and col of the square
 	int r = getSquareStartRow(sqr);
 	int c = getSquareStartCol(sqr);
@@ -129,46 +138,48 @@ void Solver::updateSquare(int sqr, int val) {
 }
 
 int Solver::getSquareStartRow(int sqr) {
-	int r = -1;
+	int row = -1;
 	if (sqr < 4) {
-		r = 0;
+		row = 0;
 	}
 	else if (sqr > 3 && sqr < 7) {
-		r = 3;
+		row = 3;
 	}
 	else if (sqr > 6) {
-		r = 6;
+		row = 6;
 	}
-	return r;
+	return row;
 }
 
 int Solver::getSquareStartCol(int sqr) {
-	int c = -1;
+	int col = -1;
 	if (sqr % 3 == 1) {
-		c = 0;
+		col = 0;
 	}
 	else if (sqr % 3 == 2) {
-		c = 3;
+		col = 3;
 	}
 	else if (sqr % 3 == 0) {
-		c = 6;
+		col = 6;
 	}
-	return c;
+	return col;
 }
 
 /* Need a way to check scenario in which only one tile in a square
    can be a specific number and place a tile accordingly */
 void Solver::checkSquare(int sqr) {
-	int r = getSquareStartRow(sqr);
-	int c = getSquareStartCol(sqr);
+	checkSquareCalls++;
+
+	int row = getSquareStartRow(sqr);
+	int col = getSquareStartCol(sqr);
 	// loop through the tiles in the square; if for all tiles, only one shows potential for a certain #, then add it to the setQueue
 	int count = 0;
 	int val = 1;
 	while (val < 10) {
 		int refr = -1;
 		int refc = -1;
-		for (int i = r; i < r + 3; i++) {
-			for (int j = c; j < c + 3; j++) {
+		for (int i = row; i < row + 3; i++) {
+			for (int j = col; j < col + 3; j++) {
 				if (!tiles[i][j]->hasVal()) {
 					if (tiles[i][j]->hasPotential(val)) {
 						count++;
@@ -176,7 +187,13 @@ void Solver::checkSquare(int sqr) {
 						refc = j;
 					}
 				}
+            if (count > 3) {
+               break;
+            }
 			}
+         if (count > 3) {
+            break;
+         }
 		}
 		if (count == 1) {
 			if (!tiles[refr][refc]->hasBeenQueued()) {
@@ -191,18 +208,22 @@ void Solver::checkSquare(int sqr) {
 			int alignedR = 0;
 			int alignedC = 0;
 			for (int i = 0; i < 3; i++) {
-				if (tiles[refr][c + i]->hasPotential(val)) {
+				if (tiles[refr][col + i]->hasPotential(val)) {
 					alignedR++;
 				}
-				if (tiles[r + i][refc]->hasPotential(val)) {
+				if (tiles[row + i][refc]->hasPotential(val)) {
 					alignedC++;
 				}
 			}
 			if (alignedR == count) {
-				updateRow(refr, val, sqr);
+            if (rowPotential[refr][val - 1] > count) {
+               updateTilePotentialInRow(refr, val, sqr);
+            }
 			}
 			else if (alignedC == count) {
-				updateCol(refc, val, sqr);
+            if (colPotential[refc][val - 1] > count) {
+               updateTilePotentialInCol(refc, val, sqr);
+            }
 			}
 		}
 		val++;
@@ -214,72 +235,98 @@ void Solver::checkSquare(int sqr) {
    square that just had a tile set with a number (Note: this means the squares
    are not necessarily adjacent) */
 void Solver::checkAdjSquares(int sqr) {
-	int r = getSquareStartRow(sqr);
-	int c = getSquareStartCol(sqr);
-	int radj = 1;
-	int cadj = 1;
-	if (r == 3) {
-		radj = 4;
+	checkAdjSquaresCalls++;
+
+	int row = getSquareStartRow(sqr);
+	int col = getSquareStartCol(sqr);
+	int rowAdj = 1;
+	int colAdj = 1;
+	if (row == 3) {
+		rowAdj = 4;
 	}
-	else if (r == 6) {
-		radj = 7;
+	else if (row == 6) {
+		rowAdj = 7;
 	}
-	if (c == 3) {
-		cadj = 2;
+	if (col == 3) {
+		colAdj = 2;
 	}
-	else if (c == 6) {
-		cadj = 3;
+	else if (col == 6) {
+		colAdj = 3;
 	}
-	for (int i = 0; i < 3; i++) {
-		if (cadj + i * 3 != sqr) {
-			checkSquare(cadj + i * 3);
+	for (int idx = 0; idx < 3; idx++) {
+		if (colAdj + idx * 3 != sqr) {
+			checkSquare(colAdj + idx * 3);
 		}
-		if (radj + i != sqr) {
-			checkSquare(radj + i);
+		if (rowAdj + idx != sqr) {
+			checkSquare(rowAdj + idx);
 		}
 	}
 }
 
-void Solver::checkRowPotential(int r) {
-	for (int j = 0; j < 9; j++) {
-		if (rowPotential[r][j] == 1) {
-			for (int k = 0; k < 9; k++) {
-				if (tiles[r][k]->hasPotential(j + 1) && !tiles[r][k]->hasBeenQueued()) {
-					setQueue.push(tiles[r][k]);
-					tiles[r][k]->setQueueState(true);
-					tiles[r][k]->updatePotential(j + 1);
+void Solver::checkRowPotential(int row) {
+	checkRowPotentialCalls++;
+
+	for (int potentialValIdx = 0; potentialValIdx < 9; potentialValIdx++) {
+		if (rowPotential[row][potentialValIdx] == 1) {
+			for (int colIdx = 0; colIdx < 9; colIdx++) {
+				if (tiles[row][colIdx]->hasPotential(potentialValIdx + 1) && !tiles[row][colIdx]->hasBeenQueued()) {
+					setQueue.push(tiles[row][colIdx]);
+					tiles[row][colIdx]->setQueueState(true);
+					tiles[row][colIdx]->updatePotential(potentialValIdx + 1);
 				}
 			}
 		}
 	}
 }
 
-void Solver::checkColPotential(int c) {
-	for (int j = 0; j < 9; j++) {
-		if (colPotential[c][j] == 1) {
-			for (int k = 0; k < 9; k++) {
-				if (tiles[k][c]->hasPotential(j + 1) && !tiles[k][c]->hasBeenQueued()) {
-					setQueue.push(tiles[k][c]);
-					tiles[k][c]->setQueueState(true);
-					tiles[k][c]->updatePotential(j + 1);
+void Solver::checkColPotential(int col) {
+	checkColPotentialCalls++;
+
+	for (int potentialValIdx = 0; potentialValIdx < 9; potentialValIdx++) {
+		if (colPotential[col][potentialValIdx] == 1) {
+			for (int rowIdx = 0; rowIdx < 9; rowIdx++) {
+				if (tiles[rowIdx][col]->hasPotential(potentialValIdx + 1) && !tiles[rowIdx][col]->hasBeenQueued()) {
+					setQueue.push(tiles[rowIdx][col]);
+					tiles[rowIdx][col]->setQueueState(true);
+					tiles[rowIdx][col]->updatePotential(potentialValIdx + 1);
 				}
 			}
 		}
 	}
 }
 
-void Solver::updateRowPotential(int r) {
-	for (int i = 0; i < 9; i++) {
-		if (rowPotential[r][i] > 1) {
-			rowPotential[r][i]--;
+void Solver::updateRowPotential(int row) {
+	updateRowPotentialCalls++;
+
+	for (int colIdx = 0; colIdx < 9; colIdx++) {
+		if (rowPotential[row][colIdx] > 1) {
+			rowPotential[row][colIdx]--;
 		}
 	}
 }
 
-void Solver::updateColPotential(int c) {
-	for (int i = 0; i < 9; i++) {
-		if (colPotential[i][c] > 1) {
-			colPotential[i][c]--;
+void Solver::updateColPotential(int col) {
+	updateColPotentialCalls++;
+
+	for (int rowIdx = 0; rowIdx < 9; rowIdx++) {
+		if (colPotential[rowIdx][col] > 1) {
+			colPotential[rowIdx][col]--;
 		}
 	}
+}
+
+std::string Solver::getDebugInfo() {
+	std::string printString;
+	printString.append("Total SetTile Calls: " + std::to_string(setTileCalls) + "\n");
+	printString.append("Total CheckSquare Calls: " + std::to_string(checkSquareCalls) + "\n");
+	printString.append("Total CheckAdjSquares Calls: " + std::to_string(checkAdjSquaresCalls) + "\n");
+	printString.append("Total CheckRowPotential Calls: " + std::to_string(checkRowPotentialCalls) + "\n");
+	printString.append("Total CheckColPotential Calls: " + std::to_string(checkColPotentialCalls) + "\n");
+	printString.append("Total CheckBoard Calls: " + std::to_string(checkBoardCalls) + "\n");
+	printString.append("Total UpdateTilePotentialInRow Calls: " + std::to_string(updateTilePotentialInRowCalls) + "\n");
+	printString.append("Total UpdateTilePotentialInCol Calls: " + std::to_string(updateTilePotentialInColCalls) + "\n");
+	printString.append("Total UpdateTilePotentialInSqr Calls: " + std::to_string(updateTilePotentialInSqrCalls) + "\n");
+	printString.append("Total UpdateRowPotential Calls: " + std::to_string(updateRowPotentialCalls) + "\n");
+	printString.append("Total UpdateColPotential Calls: " + std::to_string(updateColPotentialCalls) + "\n");
+	return printString;
 }
