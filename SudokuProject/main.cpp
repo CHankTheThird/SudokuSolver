@@ -24,10 +24,10 @@ int main() {
 		curr = hard;
 	}
 	Board board(curr);
-	std::cout << board.printBoard();
+	std::cout << board.getBoard();
 	Solver s(curr);
 	board.updateLines();
-	std::cout << board.printBoard();
+	std::cout << board.getBoard();
 	std::cout << s.getDebugInfo();
 	while (puzz != "exit") {
 		std::cout << "Type exit to close program" << std::endl;

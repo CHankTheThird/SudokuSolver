@@ -1,20 +1,14 @@
 #include "Board.h"
 
 Board::Board() {
-	flatLine = "-------------------";
-	divLine = "|-----|-----|-----|";
-	boxLine = "|=====+=====+=====|";
 	for (int i = 0; i < 9; i++) {
-		lines.push_back("| | | | | | | | | |");
+		boardLines.push_back("| | | | | | | | | |");
 	}
 }
 
-Board::Board(Puzzle* p) {
-	puz = p;
-	flatLine = "-------------------";
-	divLine = "|-----|-----|-----|";
-	boxLine = "|=====+=====+=====|";
-	std::vector<std::vector<Tile*>> tiles = p->getTiles();
+Board::Board(Puzzle* puz) {
+	puzzle = puz;
+	std::vector<std::vector<Tile*>> tiles = puzzle->getTiles();
 	std::string line = "|";
 	for (int i = 0; i < 9; i++) {
 		for (int j = 0; j < 9; j++) {
@@ -25,41 +19,40 @@ Board::Board(Puzzle* p) {
 				line.append(" |");
 			}
 		}
-		lines.emplace(lines.begin() + i, line);
+		boardLines.emplace(boardLines.begin() + i, line);
 		line = "|";
-		//lines.push_back("|X|X|X|X|X|X|X|X|X|");
 	}
 }
 
-std::string Board::getLine(int line) {
-	return lines.at(line);
-}
-
-std::string Board::printFlatLine() {
+std::string Board::getFlatLine() {
 	 return flatLine;
 }
 
-std::string Board::printDivLine() {
+std::string Board::getDivLine() {
 	return divLine;
 }
 
-std::string Board::printBoxLine() {
+std::string Board::getBoxLine() {
 	return boxLine;
 }
 
-std::string Board::printBoard() {
+std::string Board::getLine(int line) {
+   return boardLines.at(line);
+}
+
+std::string Board::getBoard() {
 	std::string board;
 	for (int i = 0; i < 19; i++) {
 		if (i == 0 || i == 18) {
-			board += printFlatLine();
+			board += getFlatLine();
 			board += "\n";
 		}
 		else if (i % 6 == 0) {
-			board += printBoxLine();
+			board += getBoxLine();
 			board += "\n";
 		}
 		else if (i % 2 == 0) {
-			board += printDivLine();
+			board += getDivLine();
 			board += "\n";
 		}
 		else {
@@ -72,7 +65,7 @@ std::string Board::printBoard() {
 
 void Board::updateLines() {
 	std::vector<std::string> newLines;
-	std::vector<std::vector<Tile*>> tiles = puz->getTiles();
+	std::vector<std::vector<Tile*>> tiles = puzzle->getTiles();
 	std::string line = "|";
 	for (int i = 0; i < 9; i++) {
 		for (int j = 0; j < 9; j++) {
@@ -85,7 +78,6 @@ void Board::updateLines() {
 		}
 		newLines.emplace(newLines.begin() + i, line);
 		line = "|";
-		//lines.push_back("|X|X|X|X|X|X|X|X|X|");
 	}
-	lines = newLines;
+	boardLines = newLines;
 }

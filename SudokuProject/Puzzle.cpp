@@ -4,7 +4,7 @@ Puzzle::Puzzle() {
 	for (int i = 0; i < 9; i++) {
 		std::vector<Tile*> row;
 		for (int j = 0; j < 9; j++) {
-			Tile* tile = new Tile(i + 1, j + 1, j + 1);
+			Tile* tile = new Tile(i + 1, j + 1);
 			row.emplace(row.begin() + j, tile);
 		}
 		tiles.emplace(tiles.begin() + i, row);
